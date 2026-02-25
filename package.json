@@ -4,6 +4,7 @@
   "description": "Production-grade URL shortener — Node.js, Express, MongoDB",
   "main": "src/app.js",
   "type": "module",
+  
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
