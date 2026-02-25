@@ -3,12 +3,11 @@
  * Handles /:code GET requests — resolves and redirects.
  */
 
-import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import linkService from '../services/linkService.js';
 import catchAsync from '../utils/catchAsync.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const publicIndexPath = fileURLToPath(new URL('../public/index.html', import.meta.url));
 
 class RedirectController {
 
@@ -41,7 +40,7 @@ class RedirectController {
   });
 
   home = (_req, res) => {
-    res.sendFile(path.resolve(process.cwd(), 'src', 'public', 'index.html'));
+    res.sendFile(publicIndexPath);
   };
 }
 
@@ -52,7 +51,8 @@ function esc(s) {
     .replaceAll('>', '&gt;');
 }
 
-function errorHtml(title, message, code) {
+function errorHtml(title, message, status, shortCode) {
+  const codeLine = shortCode ? `Code: ${esc(shortCode)}` : '';
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>${esc(title)} — SNIP</title>
@@ -64,6 +64,7 @@ function errorHtml(title, message, code) {
     .box{text-align:center;padding:60px 40px}
     .num{font-family:'Bebas Neue',sans-serif;font-size:140px;line-height:1;
          color:#e8ff47;opacity:.12;user-select:none}
+    .meta{color:#777;font-size:12px;margin:-6px 0 20px;letter-spacing:.5px}
     h1{font-family:'Bebas Neue',sans-serif;font-size:38px;letter-spacing:3px;margin:12px 0 10px}
     p{color:#666;font-size:14px;max-width:380px;margin:0 auto 28px;line-height:1.7}
     a{display:inline-block;background:#e8ff47;color:#0a0a0a;
@@ -71,8 +72,9 @@ function errorHtml(title, message, code) {
       padding:12px 30px;text-decoration:none;border-radius:2px}
   </style></head>
   <body><div class="box">
-    <div class="num">${code}</div>
+    <div class="num">${esc(status)}</div>
     <h1>${esc(title)}</h1>
+    ${codeLine ? `<div class="meta">${codeLine}</div>` : ''}
     <p>${esc(message)}</p>
     <a href="/">← Back to SNIP</a>
   </div></body></html>`;

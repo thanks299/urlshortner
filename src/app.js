@@ -7,7 +7,6 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
-import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import 'dotenv/config.js';
@@ -21,9 +20,7 @@ import notFound from './middlewares/notFound.js';
 import apiRoutes from './routes/api.js';
 import redirectRoutes from './routes/redirect.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const publicDir = path.resolve(process.cwd(), 'src', 'public');
+const publicDir = fileURLToPath(new URL('./public', import.meta.url));
 
 async function bootstrap() {
   // Connect to MongoDB
