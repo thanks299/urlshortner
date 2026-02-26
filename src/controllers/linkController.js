@@ -15,7 +15,10 @@ class LinkController {
    */
   shorten = catchAsync(async (req, res) => {
     const { originalUrl, customCode, expiresAt } = req.body;
-    const result = await linkService.shortenUrl({ originalUrl, customCode, expiresAt });
+    const protocol = req.get('x-forwarded-proto') || req.protocol || 'http';
+    const host = req.get('x-forwarded-host') || req.get('host') || 'localhost:3000';
+    const baseUrl = `${protocol}://${host}`;
+    const result = await linkService.shortenUrl({ originalUrl, customCode, expiresAt, baseUrl });
     const status = result.existing ? 200 : 201;
     res.status(status).json({ success: true, data: result });
   });

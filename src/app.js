@@ -28,6 +28,9 @@ async function bootstrap() {
 
   const app = express();
 
+  // Trust proxy headers for deployed apps
+  app.set('trust proxy', 1);
+
   app.use(helmet({ contentSecurityPolicy: false })); // CSP off for demo frontend
   app.use(cors());
   app.use(express.json());
