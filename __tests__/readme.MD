@@ -1,4 +1,4 @@
-# SNIP — URL Shortener
+# URL Shortener
 
 > Production-grade URL shortener built with the **Scrum framework**, using **Node.js**, **Express**, and **MongoDB**.
 
