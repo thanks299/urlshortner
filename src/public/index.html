@@ -242,12 +242,15 @@ let togState = {};
 let openCode = null;
 
 // ── Tabs ─────────────────────────────────────────────────────────────
-const TABS = ['shorten','dashboard','api'];
+const TABS = ['shorten','dashboard'];
 function tab(name) {
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',TABS[i]===name));
-  TABS.forEach(n=>document.getElementById('p-'+n).classList.toggle('active',n===name));
+  TABS.forEach(n=>{
+    const p=document.getElementById('p-'+n);
+    if(p)p.classList.toggle('active',n===name);
+    }
+  );
   if (name==='dashboard') loadStats();
-  if (name==='api') loadApiDocs();
 }
 
 // ── Toggles ───────────────────────────────────────────────────────────
