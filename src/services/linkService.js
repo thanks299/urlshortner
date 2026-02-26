@@ -11,7 +11,6 @@ import logger from '../config/logger.js';
 import AppError from '../utils/AppError.js';
 
 const CODE_LENGTH = Number.parseInt(process.env.CODE_LENGTH, 10) || 7;
-const BASE_URL    = process.env.BASE_URL || 'http://localhost:3000';
 
 class LinkService {
 
@@ -23,14 +22,14 @@ class LinkService {
     return Array.from(bytes, b => chars[b % chars.length]).join('');
   }
 
-  _buildShortUrl(code) {
-    return `${BASE_URL}/${code}`;
+  _buildShortUrl(code, baseUrl) {
+    return `${baseUrl}/${code}`;
   }
 
-  _formatLink(doc) {
+  _formatLink(doc, baseUrl) {
     return {
       shortCode:   doc.code,
-      shortUrl:    this._buildShortUrl(doc.code),
+      shortUrl:    this._buildShortUrl(doc.code, baseUrl),
       originalUrl: doc.originalUrl,
       clicks:      doc.clicks,
       expiresAt:   doc.expiresAt || null,
@@ -40,46 +39,56 @@ class LinkService {
     };
   }
 
-  // ── Use Cases ──────────────────────────────────────────────────────────────
-
-  async shortenUrl({ originalUrl, customCode, expiresAt }) {
+  _validateUrl(originalUrl) {
     const trimmed = (originalUrl || '').trim();
     if (!trimmed) throw new AppError('originalUrl is required.', 400);
     if (!validator.isURL(trimmed, { protocols: ['http', 'https'], require_protocol: true })) {
       throw new AppError('Invalid URL. Must start with http:// or https://.', 400);
     }
+    return trimmed;
+  }
 
-    let expiryDate = null;
-    if (expiresAt) {
-      expiryDate = new Date(expiresAt);
-      if (Number.isNaN(expiryDate.getTime())) throw new AppError('Invalid expiresAt date.', 400);
-      if (expiryDate <= new Date())    throw new AppError('expiresAt must be in the future.', 400);
-    }
+  _validateExpiryDate(expiresAt) {
+    if (!expiresAt) return null;
+    const expiryDate = new Date(expiresAt);
+    if (Number.isNaN(expiryDate.getTime())) throw new AppError('Invalid expiresAt date.', 400);
+    if (expiryDate <= new Date()) throw new AppError('expiresAt must be in the future.', 400);
+    return expiryDate;
+  }
 
-    if (!customCode && !expiresAt) {
-      const existing = await repo.findByOriginalUrl(trimmed);
-      if (existing) {
-        logger.debug(`Dedup hit for ${trimmed} → ${existing.code}`);
-        return { ...this._formatLink(existing), existing: true };
-      }
-    }
-
-    let code;
+  async _resolveCode(customCode) {
     if (customCode) {
-      code = customCode.trim();
+      const code = customCode.trim();
       if (!/^[a-zA-Z0-9_-]{2,30}$/.test(code)) {
         throw new AppError('Custom code: 2–30 alphanumeric chars (- _ allowed).', 400);
       }
       const taken = await repo.existsByCode(code);
       if (taken) throw new AppError(`Code "${code}" is already taken.`, 409);
-    } else {
-      code = this._generateCode();
-      while (await repo.existsByCode(code)) code = this._generateCode();
+      return code;
+    }
+    let code = this._generateCode();
+    while (await repo.existsByCode(code)) code = this._generateCode();
+    return code;
+  }
+
+  // ── Use Cases ──────────────────────────────────────────────────────────────
+
+  async shortenUrl({ originalUrl, customCode, expiresAt, baseUrl }) {
+    const trimmed = this._validateUrl(originalUrl);
+    const expiryDate = this._validateExpiryDate(expiresAt);
+
+    if (!customCode && !expiresAt) {
+      const existing = await repo.findByOriginalUrl(trimmed);
+      if (existing) {
+        logger.debug(`Dedup hit for ${trimmed} → ${existing.code}`);
+        return { ...this._formatLink(existing, baseUrl), existing: true };
+      }
     }
 
+    const code = await this._resolveCode(customCode);
     const link = await repo.create({ code, originalUrl: trimmed, expiresAt: expiryDate });
     logger.info(`Created link: ${code} → ${trimmed}`);
-    return this._formatLink(link);
+    return this._formatLink(link, baseUrl);
   }
 
   async resolveCode(code, clickMeta = {}) {
