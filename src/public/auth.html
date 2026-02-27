@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Shortener - Authentication</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #080808; --surface: #101010; --surface2: #141414;
+      --border: #1c1c1c; --border2: #262626;
+      --accent: #e8ff47; --accent2: #ff6b35;
+      --text: #efefef; --muted: #888; --muted2: #555;
+      --green: #4effa0; --red: #ff5c5c;
+    }
+    body { 
+      background: var(--bg); 
+      color: var(--text); 
+      font-family: 'DM Sans', sans-serif; 
+      min-height: 100vh; 
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image: radial-gradient(circle, rgba(232, 255, 71, .05) 1px, transparent 1px);
+      background-size: 36px 36px;
+    }
+    
+    .auth-wrap {
+      max-width: 460px;
+      width: 100%;
+      position: relative;
+      z-index: 1;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      animation: fadeInDown 0.6s ease;
+    }
+
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 58px;
+      letter-spacing: 6px;
+      line-height: 1;
+      color: var(--accent);
+      text-shadow: 0 0 50px rgba(232, 255, 71, .18);
+      margin-bottom: 12px;
+    }
+
+    .tagline {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2.5px;
+      color: var(--muted);
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 32px;
+      animation: fadeIn 0.6s ease 0.2s backwards;
+    }
+
+    .tab-btn {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      padding: 11px 22px;
+      cursor: pointer;
+      color: var(--muted);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color .15s;
+      flex: 1;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 36px;
+      position: relative;
+      overflow: hidden;
+      animation: fadeIn 0.6s ease 0.4s backwards;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+
+    .form-container {
+      display: none;
+    }
+
+    .form-container.active {
+      display: block;
+      animation: slideUp 0.3s ease;
+    }
+
+    .fg {
+      margin-bottom: 20px;
+    }
+
+    .lbl {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 7px;
+    }
+
+    input[type=email],
+    input[type=password] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      padding: 12px 14px;
+      outline: none;
+      border-radius: 2px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(232, 255, 71, .06);
+    }
+
+    input::placeholder {
+      color: #383838;
+    }
+
+    .btn-main {
+      width: 100%;
+      background: var(--accent);
+      color: #080808;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 2px;
+      padding: 13px;
+      border: none;
+      border-radius: 2px;
+      cursor: pointer;
+      margin-top: 22px;
+      transition: transform .12s, box-shadow .12s;
+    }
+
+    .btn-main:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 26px rgba(232, 255, 71, .18);
+    }
+
+    .btn-main:active {
+      transform: none;
+    }
+
+    .btn-main:disabled,
+    .btn-main.loading {
+      opacity: .4;
+      pointer-events: none;
+    }
+
+    .message {
+      margin-top: 18px;
+      border-radius: 2px;
+      padding: 14px 16px;
+      display: none;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      animation: slideUp 0.3s ease;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message.error {
+      border: 1px solid var(--red);
+      background: rgba(255, 92, 92, .04);
+      color: var(--red);
+    }
+
+    .message.success {
+      border: 1px solid var(--green);
+      background: rgba(78, 255, 160, .04);
+      color: var(--green);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 13px;
+      height: 13px;
+      border: 2px solid rgba(8, 8, 8, .2);
+      border-top-color: #080808;
+      border-radius: 50%;
+      animation: spin .5s linear infinite;
+      margin-right: 6px;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: #2a2a2a;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      animation: fadeIn 0.6s ease 0.6s backwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes fadeInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 480px) {
+      .logo {
+        font-size: 44px;
+      }
+      .card {
+        padding: 28px 24px;
+      }
+      .tab-btn {
+        font-size: 10px;
+        padding: 10px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-wrap">
+    <div class="header">
+      <div class="logo">URL SHORTENER</div>
+      <div class="tagline">Shorten URLs • Track Analytics</div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="login">Login</button>
+      <button class="tab-btn" data-tab="register">Register</button>
+    </div>
+
+    <div class="card">
+      <!-- LOGIN FORM -->
+      <div id="login" class="form-container active">
+        <form id="loginForm">
+          <div class="fg">
+            <label class="lbl" for="loginEmail">Email Address</label>
+            <input type="email" id="loginEmail" name="email" required placeholder="you@example.com" autocomplete="email">
+          </div>
+          <div class="fg">
+            <label class="lbl" for="loginPassword">Password</label>
+            <input type="password" id="loginPassword" name="password" required placeholder="••••••••" autocomplete="current-password">
+          </div>
+          <button type="submit" class="btn-main">
+            <span id="loginBtnText">Login</span>
+          </button>
+          <div id="loginMessage" class="message"></div>
+        </form>
+      </div>
+
+      <!-- REGISTER FORM -->
+      <div id="register" class="form-container">
+        <form id="registerForm">
+          <div class="fg">
+            <label class="lbl" for="registerEmail">Email Address</label>
+            <input type="email" id="registerEmail" name="email" required placeholder="you@example.com" autocomplete="email">
+          </div>
+          <div class="fg">
+            <label class="lbl" for="registerPassword">Password</label>
+            <input type="password" id="registerPassword" name="password" required placeholder="At least 6 characters" autocomplete="new-password">
+          </div>
+          <div class="fg">
+            <label class="lbl" for="registerConfirm">Confirm Password</label>
+            <input type="password" id="registerConfirm" name="confirm" required placeholder="Re-enter password" autocomplete="new-password">
+          </div>
+          <button type="submit" class="btn-main">
+            <span id="registerBtnText">Register</span>
+          </button>
+          <div id="registerMessage" class="message"></div>
+        </form>
+      </div>
+    </div>
+
+    <footer>Url Shortner</footer>
+  </div>
+
+  <script>
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.form-container').forEach(f => f.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(tab).classList.add('active');
+        
+        // Clear messages
+        document.querySelectorAll('.message').forEach(m => {
+          m.classList.remove('show');
+          m.textContent = '';
+        });
+      });
+    });
+
+    function showMessage(id, text, type) {
+      const msg = document.getElementById(id);
+      msg.textContent = text;
+      msg.className = `message show ${type}`;
+    }
+
+    // Login form handler
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      const btnText = document.getElementById('loginBtnText');
+      const submitBtn = e.target.querySelector('.btn-main');
+
+      document.getElementById('loginMessage').classList.remove('show');
+      submitBtn.classList.add('loading');
+      btnText.innerHTML = '<span class="spinner"></span>Logging in...';
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Login failed');
+        }
+
+        // Store token and redirect
+        localStorage.setItem('token', data.token);
+        showMessage('loginMessage', '✓ Login successful! Redirecting...', 'success');
+        setTimeout(() => {
+          globalThis.location.href = '/app';
+        }, 1200);
+      } catch (err) {
+        showMessage('loginMessage', '✗ ' + err.message, 'error');
+        submitBtn.classList.remove('loading');
+        btnText.textContent = 'Login';
+      }
+    });
+
+    // Register form handler
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('registerEmail').value;
+      const password = document.getElementById('registerPassword').value;
+      const confirm = document.getElementById('registerConfirm').value;
+      const btnText = document.getElementById('registerBtnText');
+      const submitBtn = e.target.querySelector('.btn-main');
+
+      document.getElementById('registerMessage').classList.remove('show');
+
+      // Validate passwords match
+      if (password !== confirm) {
+        showMessage('registerMessage', '✗ Passwords do not match', 'error');
+        return;
+      }
+
+      if (password.length < 6) {
+        showMessage('registerMessage', '✗ Password must be at least 6 characters', 'error');
+        return;
+      }
+
+      submitBtn.classList.add('loading');
+      btnText.innerHTML = '<span class="spinner"></span>Registering...';
+
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Registration failed');
+        }
+
+        // Store token and redirect
+        localStorage.setItem('token', data.token);
+        showMessage('registerMessage', '✓ Registration successful! Redirecting...', 'success');
+        setTimeout(() => {
+          globalThis.location.href = '/app';
+        }, 1200);
+      } catch (err) {
+        showMessage('registerMessage', '✗ ' + err.message, 'error');
+        submitBtn.classList.remove('loading');
+        btnText.textContent = 'Register';
+      }
+    });
+  </script>
+</body>
+</html>
+
+
+<!-- EBgtGXw8@2ZzgSM -->

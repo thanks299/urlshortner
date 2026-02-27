@@ -54,9 +54,10 @@ const LinkSchema = new mongoose.Schema(
       index:   true,
     },
     createdBy: {
-      // Placeholder for future auth (Sprint 3)
-      type:    String,
-      default: null,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'User reference is required'],
+      index: true,
     },
   },
   {

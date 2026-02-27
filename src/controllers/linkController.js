@@ -18,7 +18,8 @@ class LinkController {
     const protocol = req.get('x-forwarded-proto') || req.protocol || 'http';
     const host = req.get('x-forwarded-host') || req.get('host') || 'localhost:3000';
     const baseUrl = `${protocol}://${host}`;
-    const result = await linkService.shortenUrl({ originalUrl, customCode, expiresAt, baseUrl });
+    const userId = req.user._id; // From auth middleware
+    const result = await linkService.shortenUrl({ originalUrl, customCode, expiresAt, baseUrl, userId });
     const status = result.existing ? 200 : 201;
     res.status(status).json({ success: true, data: result });
   });
@@ -29,11 +30,13 @@ class LinkController {
    */
   list = catchAsync(async (req, res) => {
     const { page = 1, limit = 50, sortBy = 'clicks', order = 'desc' } = req.query;
+    const userId = req.user._id; // From auth middleware
     const result = await linkService.listLinks({
       page:   Number.parseInt(page,  10),
       limit:  Number.parseInt(limit, 10),
       sortBy,
       order,
+      userId,
     });
     res.status(200).json({ success: true, data: result });
   });
@@ -43,7 +46,8 @@ class LinkController {
    * Click analytics for a specific link.
    */
   analytics = catchAsync(async (req, res) => {
-    const result = await linkService.getAnalytics(req.params.code);
+    const userId = req.user._id; // From auth middleware
+    const result = await linkService.getAnalytics(req.params.code, userId);
     res.status(200).json({ success: true, data: result });
   });
 
@@ -52,7 +56,8 @@ class LinkController {
    * Soft-delete a link.
    */
   remove = catchAsync(async (req, res) => {
-    const result = await linkService.deleteLink(req.params.code);
+    const userId = req.user._id; // From auth middleware
+    const result = await linkService.deleteLink(req.params.code, userId);
     res.status(200).json({ success: true, data: result });
   });
 

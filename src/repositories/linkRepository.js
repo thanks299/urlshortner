@@ -16,10 +16,10 @@ class LinkRepository {
   }
 
   /**
-   * Find by original URL (for deduplication).
+   * Find by original URL (for deduplication) - scoped to user.
    */
-  async findByOriginalUrl(originalUrl) {
-    return Link.findOne({ originalUrl, isActive: true, expiresAt: null });
+  async findByOriginalUrl(originalUrl, userId) {
+    return Link.findOne({ originalUrl, isActive: true, expiresAt: null, createdBy: userId });
   }
 
   /**
@@ -32,8 +32,8 @@ class LinkRepository {
   /**
    * Persist a new link document.
    */
-  async create({ code, originalUrl, expiresAt }) {
-    const link = new Link({ code, originalUrl, expiresAt });
+  async create({ code, originalUrl, expiresAt, createdBy }) {
+    const link = new Link({ code, originalUrl, expiresAt, createdBy });
     return link.save();
   }
 
@@ -58,40 +58,43 @@ class LinkRepository {
   }
 
   /**
-   * Get all active links, sorted by click count desc.
+   * Get all active links for a specific user, sorted by click count desc.
    * Excludes the full clickEvents array for performance.
    */
-  async findAll({ page = 1, limit = 50, sortBy = 'clicks', order = 'desc' } = {}) {
+  async findAll({ page = 1, limit = 50, sortBy = 'clicks', order = 'desc', userId } = {}) {
     const skip       = (page - 1) * limit;
     const sortOrder  = order === 'asc' ? 1 : -1;
     const sortField  = ['clicks', 'createdAt', 'code'].includes(sortBy) ? sortBy : 'clicks';
 
+    const query = { isActive: true };
+    if (userId) query.createdBy = userId;
+
     const [links, total] = await Promise.all([
-      Link.find({ isActive: true })
+      Link.find(query)
         .select('-clickEvents')
         .sort({ [sortField]: sortOrder })
         .skip(skip)
         .limit(limit)
         .lean(),
-      Link.countDocuments({ isActive: true }),
+      Link.countDocuments(query),
     ]);
 
     return { links, total, page, limit };
   }
 
   /**
-   * Get a link with its full click event log.
+   * Get a link with its full click event log - scoped to user.
    */
-  async findWithAnalytics(code) {
-    return Link.findOne({ code }).lean();
+  async findWithAnalytics(code, userId) {
+    return Link.findOne({ code, createdBy: userId }).lean();
   }
 
   /**
-   * Soft-delete: mark isActive = false.
+   * Soft-delete: mark isActive = false - scoped to user.
    */
-  async softDelete(code) {
+  async softDelete(code, userId) {
     return Link.findOneAndUpdate(
-      { code },
+      { code, createdBy: userId },
       { isActive: false },
       { new: true }
     );

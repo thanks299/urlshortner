@@ -73,12 +73,12 @@ class LinkService {
 
   // ── Use Cases ──────────────────────────────────────────────────────────────
 
-  async shortenUrl({ originalUrl, customCode, expiresAt, baseUrl }) {
+  async shortenUrl({ originalUrl, customCode, expiresAt, baseUrl, userId }) {
     const trimmed = this._validateUrl(originalUrl);
     const expiryDate = this._validateExpiryDate(expiresAt);
 
     if (!customCode && !expiresAt) {
-      const existing = await repo.findByOriginalUrl(trimmed);
+      const existing = await repo.findByOriginalUrl(trimmed, userId);
       if (existing) {
         logger.debug(`Dedup hit for ${trimmed} → ${existing.code}`);
         return { ...this._formatLink(existing, baseUrl), existing: true };
@@ -86,7 +86,7 @@ class LinkService {
     }
 
     const code = await this._resolveCode(customCode);
-    const link = await repo.create({ code, originalUrl: trimmed, expiresAt: expiryDate });
+    const link = await repo.create({ code, originalUrl: trimmed, expiresAt: expiryDate, createdBy: userId });
     logger.info(`Created link: ${code} → ${trimmed}`);
     return this._formatLink(link, baseUrl);
   }
@@ -115,8 +115,8 @@ class LinkService {
     };
   }
 
-  async getAnalytics(code) {
-    const link = await repo.findWithAnalytics(code);
+  async getAnalytics(code, userId) {
+    const link = await repo.findWithAnalytics(code, userId);
     if (!link) throw new AppError(`Link "${code}" not found.`, 404);
 
     const events = [...(link.clickEvents || [])].reverse();
@@ -133,8 +133,8 @@ class LinkService {
     };
   }
 
-  async deleteLink(code) {
-    const deleted = await repo.softDelete(code);
+  async deleteLink(code, userId) {
+    const deleted = await repo.softDelete(code, userId);
     if (!deleted) throw new AppError(`Link "${code}" not found.`, 404);
     logger.info(`Deleted link: ${code}`);
     return { message: `Link "${code}" deleted successfully.` };

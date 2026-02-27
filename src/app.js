@@ -16,7 +16,9 @@ import logger from './config/logger.js';
 import rateLimiter from './middlewares/rateLimiter.js';
 import errorHandler from './middlewares/errorHandler.js';
 import notFound from './middlewares/notFound.js';
+import { protect } from './middlewares/auth.js';
 
+import authRoutes from './routes/auth.js';
 import apiRoutes from './routes/api.js';
 import redirectRoutes from './routes/redirect.js';
 
@@ -37,11 +39,26 @@ async function bootstrap() {
   app.use(express.urlencoded({ extended: false }));
   app.use(morgan('dev'));
 
+  // Serve auth page on root (BEFORE static middleware)
+  app.get('/', (req, res) => {
+    res.sendFile(`${publicDir}/auth.html`);
+  });
+
+  // Serve dashboard (BEFORE static middleware)
+  app.get('/app', (req, res) => {
+    res.sendFile(`${publicDir}/index.html`);
+  });
+
+  // Static assets (CSS, JS, images)
   app.use(express.static(publicDir));
+
+  // Public auth routes
+  app.use('/api/auth', authRoutes);
 
   app.use('/api/', rateLimiter);
 
-  app.use('/api', apiRoutes);
+  // Protected API routes
+  app.use('/api', protect, apiRoutes);
   app.use('/',    redirectRoutes);   // keep last — catches /:code
 
   app.use(notFound);

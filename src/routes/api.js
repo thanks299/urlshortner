@@ -21,7 +21,7 @@ router.delete('/links/:code',                           ctrl.remove);
 // API info
 router.get('/', (_req, res) => {
   res.json({
-    name:    'SNIP URL Shortener API',
+    name:    'URL Shortener API',
     version: '1.0.0',
     endpoints: {
       'POST   /api/links':                    'Shorten a URL',

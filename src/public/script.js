@@ -3,6 +3,53 @@ let shortUrl = '';
 let togState = {};
 let openCode = null;
 
+// ── Auth ─────────────────────────────────────────────────────────────
+function getToken() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    globalThis.location.href = '/';
+    return null;
+  }
+  return token;
+}
+
+function logout() {
+  localStorage.removeItem('token');
+  globalThis.location.href = '/';
+}
+
+// API helper with JWT
+async function apiCall(endpoint, method = 'GET', body = null) {
+  const token = getToken();
+  if (!token) return;
+  
+  const options = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    }
+  };
+  
+  if (body) {
+    options.body = JSON.stringify(body);
+  }
+  
+  const response = await fetch(endpoint, options);
+  
+  if (response.status === 401) {
+    logout();
+    throw new Error('Authentication failed');
+  }
+  
+  return response;
+}
+
+// Initialize - check auth on load
+(function() {
+  getToken();
+})();
+
 // ── Tabs ─────────────────────────────────────────────────────────────
 const TABS = ['shorten','dashboard'];
 function tab(name) {
@@ -40,8 +87,7 @@ async function shorten() {
   res.classList.remove('show');
 
   try {
-    const r = await fetch('/api/links',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({originalUrl,customCode,expiresAt})});
+    const r = await apiCall('/api/links', 'POST', {originalUrl, customCode, expiresAt});
     const j = await r.json();
     if (!r.ok) { flash('err','✕ Error',j.error||'Something went wrong.','',''); return; }
     const d = j.data;
@@ -92,7 +138,8 @@ async function loadStats() {
   el.innerHTML='<div class="empty"><span class="empty-icon">···</span>Loading…</div>';
   openCode=null;
   try {
-    const r=await fetch('/api/links'); const j=await r.json();
+    const r=await apiCall('/api/links'); 
+    const j=await r.json();
     render(j.data?.links||[]);
   } catch { el.innerHTML='<div class="empty">Failed to load.</div>'; }
 }
@@ -151,7 +198,7 @@ async function toggleDrawer(code) {
   row.style.display='table-row'; openCode=code;
   log.innerHTML='<div class="no-clicks">Loading…</div>';
   try {
-    const r=await fetch(`/api/links/${encodeURIComponent(code)}/analytics`); const j=await r.json();
+    const r=await apiCall(`/api/links/${encodeURIComponent(code)}/analytics`); const j=await r.json();
     const events=j.data?.clickEvents||[];
     if (!events.length) { log.innerHTML='<div class="no-clicks">No clicks yet.</div>'; return; }
     log.innerHTML=events.map(e=>`<div class="ce">
@@ -165,7 +212,7 @@ async function toggleDrawer(code) {
 async function del(code) {
   if (!confirm(`Delete "${code}"?`)) return;
   try {
-    const r=await fetch(`/api/links/${encodeURIComponent(code)}`,{method:'DELETE'}); const j=await r.json();
+    const r=await apiCall(`/api/links/${encodeURIComponent(code)}`, 'DELETE'); const j=await r.json();
     if (r.ok) loadStats(); else alert(j.error||'Delete failed.');
   } catch { alert('Network error.'); }
 }
@@ -256,14 +303,16 @@ function trunc(s,n){
   return s.length>n?s.slice(0,n)+'…':s;
 }
 function fmtDate(iso){
-  if(!iso) return'—';
-   else return new Date(iso)
+  if(iso) return new Date(iso)
    .toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+  return'—';
   }
 function fmtFull(iso){
-  if(!iso)return'—';
-  const d=new Date(iso);
-  return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+  if(iso){
+    const d=new Date(iso);
+    return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+  }
+  return'—';
 }
 function parseUA(ua){
   if(!ua||ua==='unknown')return'Unknown';
