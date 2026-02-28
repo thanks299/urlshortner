@@ -13,7 +13,12 @@ function getToken() {
   return token;
 }
 
-function logout() {
+async function logout() {
+  try {
+    await apiCall('/api/auth/logout', 'GET');
+  } catch (err) {
+    console.error('Logout error:', err);
+  }
   localStorage.removeItem('token');
   globalThis.location.href = '/';
 }
@@ -28,7 +33,8 @@ async function apiCall(endpoint, method = 'GET', body = null) {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
-    }
+    },
+    credentials: 'include'
   };
   
   if (body) {
@@ -46,9 +52,11 @@ async function apiCall(endpoint, method = 'GET', body = null) {
 }
 
 // Initialize - check auth on load
-(function() {
+function initAuth() {
   getToken();
-})();
+}
+
+initAuth();
 
 // ── Tabs ─────────────────────────────────────────────────────────────
 const TABS = ['shorten','dashboard'];

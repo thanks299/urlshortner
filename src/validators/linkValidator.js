@@ -31,7 +31,7 @@ function validateShorten(req, _res, next) {
   // expiresAt
   if (expiresAt !== undefined && expiresAt !== null && expiresAt !== '') {
     const d = new Date(expiresAt);
-    if (isNaN(d.getTime())) {
+    if (Number.isNaN(d.getTime())) {
       return next(new AppError('Invalid expiresAt. Provide a valid ISO date string.', 400));
     }
     if (d <= new Date()) {

@@ -6,6 +6,7 @@
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import { fileURLToPath } from 'node:url';
 
@@ -13,6 +14,7 @@ import 'dotenv/config.js';
 
 import { connect } from './config/database.js';
 import logger from './config/logger.js';
+import redisClient from './config/redis.js';
 import rateLimiter from './middlewares/rateLimiter.js';
 import errorHandler from './middlewares/errorHandler.js';
 import notFound from './middlewares/notFound.js';
@@ -34,9 +36,13 @@ async function bootstrap() {
   app.set('trust proxy', 1);
 
   app.use(helmet({ contentSecurityPolicy: false })); // CSP off for demo frontend
-  app.use(cors());
+  app.use(cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    credentials: true, // Allow cookies to be sent
+  }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
+  app.use(cookieParser());
   app.use(morgan('dev'));
 
   // Serve auth page on root (BEFORE static middleware)

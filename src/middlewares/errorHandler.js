@@ -8,8 +8,6 @@ import AppError from '../utils/AppError.js';
 
 const errorHandler = (err, _req, res, _next) => {
   let error = { ...err, message: err.message };
-
-  // ── Mongoose: CastError (bad ObjectId) ──────────────────────────────────────
   if (err.name === 'CastError') {
     error = new AppError(`Invalid ${err.path}: ${err.value}`, 400);
   }
