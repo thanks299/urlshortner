@@ -7,7 +7,12 @@
 import mongoose from 'mongoose';
 import logger from './logger.js';
 
-const MONGO_URI = process.env.MONGO_URI ?? 'mongodb://localhost:27017/url-shortener';
+const MONGO_URI =
+  process.env.MONGO_URI ||
+  process.env.MONGODB_URI ||
+  (process.env.NODE_ENV !== 'production'
+    ? 'mongodb://127.0.0.1:27017/url-shortener'
+    : null);
 
 const OPTIONS = {
   serverSelectionTimeoutMS: 5000,
@@ -15,6 +20,11 @@ const OPTIONS = {
 };
 
 async function connect() {
+  if (!MONGO_URI) {
+    const errorMsg = 'MONGO_URI is not defined. Please set it in environment variables.';
+    logger.error(errorMsg);
+    throw new Error(errorMsg);
+  }
   try {
     await mongoose.connect(MONGO_URI, OPTIONS);
     logger.info(`MongoDB connected → ${MONGO_URI}`);
