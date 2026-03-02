@@ -31,8 +31,10 @@ async function bootstrap() {
   // Connect to MongoDB
   await connect();
 
-  // Initialize email service
-  await initMailer();
+  // Initialize email service (non-blocking - don't wait for it)
+  initMailer().catch(err => {
+    logger.warn('Email service initialization failed (non-critical):', err.message);
+  });
 
   const app = express();
 

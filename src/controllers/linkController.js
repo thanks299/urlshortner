@@ -30,6 +30,9 @@ class LinkController {
    */
   list = catchAsync(async (req, res) => {
     const { page = 1, limit = 50, sortBy = 'clicks', order = 'desc' } = req.query;
+    const protocol = req.get('x-forwarded-proto') || req.protocol || 'http';
+    const host = req.get('x-forwarded-host') || req.get('host') || 'localhost:3000';
+    const baseUrl = `${protocol}://${host}`;
     const userId = req.user._id; // From auth middleware
     const result = await linkService.listLinks({
       page:   Number.parseInt(page,  10),
@@ -37,6 +40,7 @@ class LinkController {
       sortBy,
       order,
       userId,
+      baseUrl,
     });
     res.status(200).json({ success: true, data: result });
   });
@@ -46,8 +50,11 @@ class LinkController {
    * Click analytics for a specific link.
    */
   analytics = catchAsync(async (req, res) => {
+    const protocol = req.get('x-forwarded-proto') || req.protocol || 'http';
+    const host = req.get('x-forwarded-host') || req.get('host') || 'localhost:3000';
+    const baseUrl = `${protocol}://${host}`;
     const userId = req.user._id; // From auth middleware
-    const result = await linkService.getAnalytics(req.params.code, userId);
+    const result = await linkService.getAnalytics(req.params.code, userId, baseUrl);
     res.status(200).json({ success: true, data: result });
   });
 

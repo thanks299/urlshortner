@@ -108,21 +108,22 @@ class LinkService {
   }
 
   async listLinks(query = {}) {
-    const result = await repo.findAll(query);
+    const { baseUrl = process.env.BASE_URL || 'http://localhost:3000', ...rest } = query;
+    const result = await repo.findAll(rest);
     return {
       ...result,
-      links: result.links.map(l => this._formatLink(l)),
+      links: result.links.map(l => this._formatLink(l, baseUrl)),
     };
   }
 
-  async getAnalytics(code, userId) {
+  async getAnalytics(code, userId, baseUrl = process.env.BASE_URL || 'http://localhost:3000') {
     const link = await repo.findWithAnalytics(code, userId);
     if (!link) throw new AppError(`Link "${code}" not found.`, 404);
 
     const events = [...(link.clickEvents || [])].reverse();
 
     return {
-      ...this._formatLink(link),
+      ...this._formatLink(link, baseUrl),
       totalClicks: link.clicks,
       clickEvents: events.map(e => ({
         timestamp: e.timestamp,
