@@ -13,6 +13,8 @@ import 'dotenv/config.js';
 
 import { connect } from './config/database.js';
 import logger from './config/logger.js';
+import { initMailer } from './config/mailer.js';
+import linkExpiryService from './services/linkExpiryService.js';
 import rateLimiter from './middlewares/rateLimiter.js';
 import errorHandler from './middlewares/errorHandler.js';
 import notFound from './middlewares/notFound.js';
@@ -20,6 +22,7 @@ import { protect } from './middlewares/auth.js';
 
 import authRoutes from './routes/auth.js';
 import apiRoutes from './routes/api.js';
+import adminRoutes from './routes/admin.js';
 import redirectRoutes from './routes/redirect.js';
 
 const publicDir = fileURLToPath(new URL('./public', import.meta.url));
@@ -27,6 +30,9 @@ const publicDir = fileURLToPath(new URL('./public', import.meta.url));
 async function bootstrap() {
   // Connect to MongoDB
   await connect();
+
+  // Initialize email service
+  await initMailer();
 
   const app = express();
 
@@ -62,6 +68,7 @@ async function bootstrap() {
 
   // Protected API routes
   app.use('/api', protect, apiRoutes);
+  app.use('/api/admin', protect, adminRoutes); // Admin routes (protected)
   app.use('/',    redirectRoutes); 
 
   app.use(notFound);
@@ -73,6 +80,15 @@ async function bootstrap() {
       logger.info(`🔗  URL Shortener running → http://localhost:${PORT}`);
       logger.info(`📡  API       → http://localhost:${PORT}/api`);
     });
+
+    // Set up periodic task to check for expiring links (every 6 hours)
+    const checkIntervalHours = Number.parseInt(process.env.EXPIRY_CHECK_INTERVAL_HOURS || '6', 10);
+    setInterval(async () => {
+      logger.info(`[EXPIRY] Running scheduled check for expiring links...`);
+      await linkExpiryService.checkAndNotifyExpiringLinks(24); // Notify 24 hours before expiry
+    }, checkIntervalHours * 60 * 60 * 1000);
+
+    logger.info(`[EXPIRY] Scheduled expiry check every ${checkIntervalHours} hours`);
   }
 
   return app;

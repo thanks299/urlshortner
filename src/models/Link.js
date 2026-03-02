@@ -59,6 +59,19 @@ const LinkSchema = new mongoose.Schema(
       required: [true, 'User reference is required'],
       index: true,
     },
+    notificationSent: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    notificationSentAt: {
+      type: Date,
+      default: null,
+    },
+    expiredAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,  // adds createdAt, updatedAt
