@@ -15,7 +15,7 @@ class LinkExpiryService {
    * @param {number} hoursBeforeExpiry - Hours before expiry to send notification (default: 24)
    * @returns {Promise<object>} - Result with counts
    */
-  async checkAndNotifyExpiringLinks(hoursBeforeExpiry = 24) {
+  async checkAndNotifyExpiringLinks(hoursBeforeExpiry = 1) {
     try {
       const now = new Date();
       const expiryWindow = new Date(now.getTime() + hoursBeforeExpiry * 60 * 60 * 1000);

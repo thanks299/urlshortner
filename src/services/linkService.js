@@ -11,6 +11,21 @@ import logger from '../config/logger.js';
 import AppError from '../utils/AppError.js';
 
 const CODE_LENGTH = Number.parseInt(process.env.CODE_LENGTH, 10) || 7;
+const TZ = 'Africa/Lagos'; // GMT+1 year-round
+
+/** Convert a Date to a GMT+1 ISO-like string, e.g. "2026-03-03T12:17:27+01:00" */
+function toGMT1(date) {
+  if (!date) return null;
+  const d = new Date(date);
+  // Format parts in GMT+1
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).formatToParts(d);
+  const p = {};
+  for (const { type, value } of parts) p[type] = value;
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}+01:00`;
+}
 
 class LinkService {
 
@@ -32,10 +47,10 @@ class LinkService {
       shortUrl:    this._buildShortUrl(doc.code, baseUrl),
       originalUrl: doc.originalUrl,
       clicks:      doc.clicks,
-      expiresAt:   doc.expiresAt || null,
+      expiresAt:   toGMT1(doc.expiresAt),
       isExpired:   doc.expiresAt ? new Date() > new Date(doc.expiresAt) : false,
-      createdAt:   doc.createdAt,
-      updatedAt:   doc.updatedAt,
+      createdAt:   toGMT1(doc.createdAt),
+      updatedAt:   toGMT1(doc.updatedAt),
     };
   }
 
@@ -126,7 +141,7 @@ class LinkService {
       ...this._formatLink(link, baseUrl),
       totalClicks: link.clicks,
       clickEvents: events.map(e => ({
-        timestamp: e.timestamp,
+        timestamp: toGMT1(e.timestamp),
         ip:        e.ip,
         userAgent: e.userAgent,
         referer:   e.referer || null,

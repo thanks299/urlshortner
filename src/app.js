@@ -83,14 +83,14 @@ async function bootstrap() {
       logger.info(`📡  API       → http://localhost:${PORT}/api`);
     });
 
-    // Set up periodic task to check for expiring links (every 6 hours)
-    const checkIntervalHours = Number.parseInt(process.env.EXPIRY_CHECK_INTERVAL_HOURS || '6', 10);
+    // Set up periodic task to check for expiring links (every 5 minutes)
+    const checkIntervalMinutes = Number.parseInt(process.env.EXPIRY_CHECK_INTERVAL_MINUTES || '5', 10);
     setInterval(async () => {
       logger.info(`[EXPIRY] Running scheduled check for expiring links...`);
-      await linkExpiryService.checkAndNotifyExpiringLinks(24); // Notify 24 hours before expiry
-    }, checkIntervalHours * 60 * 60 * 1000);
+      await linkExpiryService.checkAndNotifyExpiringLinks(1); // Notify 1 hour before expiry
+    }, checkIntervalMinutes * 60 * 1000);
 
-    logger.info(`[EXPIRY] Scheduled expiry check every ${checkIntervalHours} hours`);
+    logger.info(`[EXPIRY] Scheduled expiry check every ${checkIntervalMinutes} minutes`);
   }
 
   return app;

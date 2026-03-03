@@ -24,9 +24,19 @@ class EmailService {
 
     try {
       const appUrl = process.env.BASE_URL || 'http://localhost:3000';
-      const hoursUntilExpiry = Math.round(
-        (new Date(link.expiresAt) - Date.now()) / (1000 * 60 * 60)
-      );
+      const minutesUntilExpiry = Math.max(1, Math.round(
+        (new Date(link.expiresAt) - Date.now()) / (1000 * 60)
+      ));
+      
+      let timeLabel;
+      if (minutesUntilExpiry >= 60) {
+        const hours = Math.round(minutesUntilExpiry / 60);
+        const hourPlural = hours === 1 ? '' : 's';
+        timeLabel = `${hours} hour${hourPlural}`;
+      } else {
+        const minutePlural = minutesUntilExpiry === 1 ? '' : 's';
+        timeLabel = `${minutesUntilExpiry} minute${minutePlural}`;
+      }
 
       const htmlContent = `
         <!DOCTYPE html>
@@ -51,7 +61,7 @@ class EmailService {
               <div class="content">
                 <p>Hi ${user.email},</p>
 
-                <p>One of your shortened links will expire in <strong>${hoursUntilExpiry} hours</strong>. After expiration, the link will no longer redirect to the original URL.</p>
+                <p>One of your shortened links will expire in <strong>${timeLabel}</strong>. After expiration, the link will no longer redirect to the original URL.</p>
 
                 <div class="link-info">
                   <strong>Short Code:</strong> ${link.code}<br>
@@ -80,9 +90,9 @@ class EmailService {
       const mailOptions = {
         from: process.env.EMAIL_FROM || process.env.GMAIL_EMAIL || 'noreply@urlshortener.io',
         to: user.email,
-        subject: `⏰ Your link "${link.code}" will expire in ${hoursUntilExpiry} hours`,
+        subject: `⏰ Your link "${link.code}" will expire in ${timeLabel}`,
         html: htmlContent,
-        text: `Your shortened link "${link.code}" will expire in ${hoursUntilExpiry} hours. Log in to your dashboard to regenerate it.`,
+        text: `Your shortened link "${link.code}" will expire in ${timeLabel}. Log in to your dashboard to regenerate it.`,
       };
 
       const info = await transporter.sendMail(mailOptions);
