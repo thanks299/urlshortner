@@ -56,7 +56,7 @@ class EmailService {
                 <div class="link-info">
                   <strong>Short Code:</strong> ${link.code}<br>
                   <strong>Original URL:</strong> <a href="${link.originalUrl}">${this._truncateUrl(link.originalUrl, 60)}</a><br>
-                  <strong>Expires at:</strong> ${new Date(link.expiresAt).toLocaleString()}<br>
+                  <strong>Expires at:</strong> ${new Date(link.expiresAt).toLocaleString('en-GB', { timeZone: 'Africa/Lagos', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })} GMT+1<br>
                   <strong>Clicks:</strong> ${link.clicks}
                 </div>
 

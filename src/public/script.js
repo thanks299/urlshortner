@@ -1,9 +1,27 @@
-// ── State ────────────────────────────────────────────────────────────
+// ── State 
 let shortUrl = '';
 let togState = {};
 let openCode = null;
 
-// ── Auth ─────────────────────────────────────────────────────────────
+// ── Timezone (GMT+1) 
+const TZ = 'Africa/Lagos'; // GMT+1 year-round, no DST
+const TZ_LABEL = 'GMT+1';
+
+// Return a Date formatted as YYYY-MM-DDTHH:MM in GMT+1 (for datetime-local inputs)
+function toGMT1Input(date) {
+  return date.toLocaleString('sv-SE', { timeZone: TZ }).replace(' ', 'T').slice(0, 16);
+}
+
+// Format a date nicely in GMT+1
+function fmtGMT1(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('en-GB', {
+    timeZone: TZ, day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  }) + ' ' + TZ_LABEL;
+}
+
+// ── Auth 
 function getToken() {
   const token = localStorage.getItem('token');
   if (!token) {
@@ -85,7 +103,9 @@ function tog(id, gid) {
 async function shorten() {
   const originalUrl = document.getElementById('longUrl').value.trim();
   const customCode  = togState['t-custom'] ? document.getElementById('customCode').value.trim() : undefined;
-  const expiresAt   = togState['t-exp']    ? document.getElementById('expiresAt').value || undefined : undefined;
+  // Append +01:00 offset so the server interprets input as GMT+1
+  const rawExp = togState['t-exp'] ? document.getElementById('expiresAt').value : '';
+  const expiresAt = rawExp ? rawExp + ':00+01:00' : undefined;
   const btn = document.getElementById('snipBtn');
   const res = document.getElementById('result');
 
@@ -100,7 +120,7 @@ async function shorten() {
     if (!r.ok) { flash('err','✕ Error',j.error||'Something went wrong.','',''); return; }
     const d = j.data;
     shortUrl = d.shortUrl;
-    const expLine = d.expiresAt ? `<br>Expires: <span>${new Date(d.expiresAt).toLocaleString()}</span>` : '';
+    const expLine = d.expiresAt ? `<br>Expires: <span>${fmtGMT1(d.expiresAt)}</span>` : '';
     flash('ok',
       d.existing ? '↩ Already shortened' : '✓ Shortened',
       d.shortUrl,
@@ -312,13 +332,13 @@ function trunc(s,n){
 }
 function fmtDate(iso){
   if(iso) return new Date(iso)
-   .toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+   .toLocaleDateString('en-GB',{month:'short',day:'numeric',year:'numeric',timeZone:TZ});
   return'—';
   }
 function fmtFull(iso){
   if(iso){
     const d=new Date(iso);
-    return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+    return d.toLocaleDateString('en-GB',{month:'short',day:'numeric',timeZone:TZ})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:TZ});
   }
   return'—';
 }
@@ -334,6 +354,6 @@ function parseUA(ua){
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('longUrl').addEventListener('keydown',e=>{if(e.key==='Enter')shorten();});
   const dt=document.getElementById('expiresAt');
-  dt.min=new Date().toISOString().slice(0,16);
-  dt.value=new Date(Date.now()+3600000).toISOString().slice(0,16);
+  dt.min=toGMT1Input(new Date());
+  dt.value=toGMT1Input(new Date(Date.now()+3600000));
 });
