@@ -9,6 +9,8 @@ import validator from 'validator';
 import repo from '../repositories/linkRepository.js';
 import logger from '../config/logger.js';
 import AppError from '../utils/AppError.js';
+import User from '../models/User.js';
+import emailService from './emailService.js';
 
 const CODE_LENGTH = Number.parseInt(process.env.CODE_LENGTH, 10) || 7;
 const TZ = 'Africa/Lagos'; // GMT+1 year-round
@@ -103,6 +105,17 @@ class LinkService {
     const code = await this._resolveCode(customCode);
     const link = await repo.create({ code, originalUrl: trimmed, expiresAt: expiryDate, createdBy: userId });
     logger.info(`Created link: ${code} → ${trimmed}`);
+
+    // If the link expires within 1 hour, send notification immediately
+    if (expiryDate) {
+      const msUntilExpiry = expiryDate.getTime() - Date.now();
+      if (msUntilExpiry > 0 && msUntilExpiry <= 60 * 60 * 1000) {
+        this._sendImmediateExpiryNotification(link, userId).catch(err =>
+          logger.error(`[EXPIRY] Immediate notification failed for ${code}: ${err.message}`)
+        );
+      }
+    }
+
     return this._formatLink(link, baseUrl);
   }
 
@@ -154,6 +167,25 @@ class LinkService {
     if (!deleted) throw new AppError(`Link "${code}" not found.`, 404);
     logger.info(`Deleted link: ${code}`);
     return { message: `Link "${code}" deleted successfully.` };
+  }
+
+  /**
+   * Send an immediate expiry notification for a newly created link.
+   * Runs in the background (fire-and-forget via .catch in caller).
+   */
+  async _sendImmediateExpiryNotification(link, userId) {
+    const user = await User.findById(userId);
+    if (!user) {
+      logger.warn(`[EXPIRY] User ${userId} not found, skipping immediate notification`);
+      return;
+    }
+    const sent = await emailService.sendLinkExpiryNotification(user, link);
+    if (sent) {
+      // Mark so the cron job doesn't send a duplicate
+      const Link = (await import('../models/Link.js')).default;
+      await Link.findByIdAndUpdate(link._id, { notificationSent: true, notificationSentAt: new Date() });
+      logger.info(`[EXPIRY] Immediate notification sent for ${link.code} to ${user.email}`);
+    }
   }
 }
 
