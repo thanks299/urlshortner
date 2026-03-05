@@ -116,12 +116,10 @@ class LinkService {
     });
     logger.info(`Created link: ${code} → ${trimmed}`);
 
-    // Email 1: Always send creation confirmation for links with expiry
-    if (expiryDate) {
-      this._sendCreationNotification(link, userId).catch(err =>
-        logger.error(`[EMAIL] Creation notification failed for ${code}: ${err.message}`)
-      );
-    }
+    // Send creation confirmation email
+    this._sendCreationNotification(link, userId).catch(err =>
+      logger.error(`[EMAIL] Creation notification failed for ${code}: ${err.message}`)
+    );
 
     return this._formatLink(link, baseUrl);
   }

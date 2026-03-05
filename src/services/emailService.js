@@ -122,10 +122,21 @@ class EmailService {
 
     try {
       const appUrl = process.env.APP_URL || process.env.BASE_URL || 'http://localhost:3000';
-      const expiresFormatted = new Date(link.expiresAt).toLocaleString('en-GB', {
-        timeZone: 'Africa/Lagos', day: 'numeric', month: 'short', year: 'numeric',
-        hour: '2-digit', minute: '2-digit', hour12: false,
-      });
+      const hasExpiry = link.expiresAt != null;
+      const expiresFormatted = hasExpiry
+        ? new Date(link.expiresAt).toLocaleString('en-GB', {
+            timeZone: 'Africa/Lagos', day: 'numeric', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', hour12: false,
+          })
+        : null;
+
+      const expiryLine = hasExpiry
+        ? `<strong>Expires at:</strong> ${expiresFormatted} GMT+1`
+        : `<strong>Expires:</strong> Never (permanent link)`;
+
+      const expiryNote = hasExpiry
+        ? '<p>You will receive reminder emails before and after this link expires.</p>'
+        : '';
 
       const htmlContent = `
         <!DOCTYPE html>
@@ -153,9 +164,9 @@ class EmailService {
                   <strong>Short Code:</strong> ${link.code}<br>
                   <strong>Short URL:</strong> <a href="${appUrl}/${link.code}">${appUrl}/${link.code}</a><br>
                   <strong>Original URL:</strong> <a href="${link.originalUrl}">${this._truncateUrl(link.originalUrl, 60)}</a><br>
-                  <strong>Expires at:</strong> ${expiresFormatted} GMT+1
+                  ${expiryLine}
                 </div>
-                <p>You will receive reminder emails before and after this link expires.</p>
+                ${expiryNote}
                 <a href="${appUrl}/app" class="button">Go to Dashboard</a>
                 <div class="footer">
                   <p>This is an automated notification from URL Shortener. Please don't reply to this email.</p>
@@ -166,12 +177,20 @@ class EmailService {
         </html>
       `;
 
+      const subject = hasExpiry
+        ? `\u2705 Link "${link.code}" created — expires ${expiresFormatted} GMT+1`
+        : `\u2705 Link "${link.code}" created successfully`;
+
+      const textBody = hasExpiry
+        ? `Your shortened link "${link.code}" has been created. It expires at ${expiresFormatted} GMT+1.`
+        : `Your shortened link "${link.code}" has been created. It does not expire.`;
+
       const mailOptions = {
         from: process.env.EMAIL_FROM || process.env.GMAIL_EMAIL || 'noreply@urlshortener.io',
         to: user.email,
-        subject: `\u2705 Link "${link.code}" created — expires ${expiresFormatted} GMT+1`,
+        subject,
         html: htmlContent,
-        text: `Your shortened link "${link.code}" has been created. It expires at ${expiresFormatted} GMT+1.`,
+        text: textBody,
       };
 
       const info = await transporter.sendMail(mailOptions);

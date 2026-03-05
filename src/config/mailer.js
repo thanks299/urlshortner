@@ -72,12 +72,16 @@ export async function initMailer() {
   try {
     transporter = createTransporter();
     
-    // Verify connection
-    await transporter.verify();
-    logger.info('✓ Email transporter configured and verified');
+    // Verify connection (non-fatal — transporter can still send if verify fails)
+    try {
+      await transporter.verify();
+      logger.info('✓ Email transporter configured and verified');
+    } catch (verifyErr) {
+      logger.warn(`⚠ Email transporter verify failed (will still attempt sends): ${verifyErr.message}`);
+    }
     return true;
   } catch (err) {
-    logger.error('✗ Failed to initialize email transporter:', err.message);
+    logger.error('✗ Failed to create email transporter:', err.message);
     transporter = null;
     return false;
   }
