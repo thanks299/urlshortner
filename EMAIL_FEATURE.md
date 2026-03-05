@@ -1,7 +1,7 @@
 # Email Notification Feature - Implementation Summary
 
 ## Overview
-Email notifications have been integrated to notify authorized users when their shortened links are about to expire. Only the user who created a link will receive expiry notifications for that specific link.
+Email notifications have been integrated to notify authorized users when their shortened links are about to expire, on creation, and 2 mins after expiry. Only the user who created a link will receive expiry notifications for that specific link.
 
 ## Files Created
 

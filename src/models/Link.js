@@ -59,6 +59,17 @@ const LinkSchema = new mongoose.Schema(
       required: [true, 'User reference is required'],
       index: true,
     },
+    notifyBefore: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+    // Email 1: sent on link creation
+    creationNotificationSent: {
+      type: Boolean,
+      default: false,
+    },
+    // Email 2: sent before expiry (at notifyBefore minutes)
     notificationSent: {
       type: Boolean,
       default: false,
@@ -67,6 +78,12 @@ const LinkSchema = new mongoose.Schema(
     notificationSentAt: {
       type: Date,
       default: null,
+    },
+    // Email 3: sent 2 minutes after expiry
+    expiryNotificationSent: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
     expiredAt: {
       type: Date,

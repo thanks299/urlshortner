@@ -172,7 +172,7 @@ describe('linkService.deleteLink', () => {
 
     const result = await linkService.deleteLink('abc');
     expect(result.message).toContain('abc');
-    expect(repo.softDelete).toHaveBeenCalledWith('abc');
+    expect(repo.softDelete).toHaveBeenCalledWith('abc', undefined);
   });
 
   test('throws 404 for nonexistent link', async () => {

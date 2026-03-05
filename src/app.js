@@ -31,10 +31,12 @@ async function bootstrap() {
   // Connect to MongoDB
   await connect();
 
-  // Initialize email service (non-blocking - don't wait for it)
-  initMailer().catch(err => {
+  // Initialize email service — wait for it so transporter is ready before accepting requests
+  try {
+    await initMailer();
+  } catch (err) {
     logger.warn('Email service initialization failed (non-critical):', err.message);
-  });
+  }
 
   const app = express();
 
@@ -87,7 +89,7 @@ async function bootstrap() {
     const checkIntervalMinutes = Number.parseInt(process.env.EXPIRY_CHECK_INTERVAL_MINUTES || '5', 10);
     setInterval(async () => {
       logger.info(`[EXPIRY] Running scheduled check for expiring links...`);
-      await linkExpiryService.checkAndNotifyExpiringLinks(1); // Notify 1 hour before expiry
+      await linkExpiryService.checkAndNotifyExpiringLinks();
     }, checkIntervalMinutes * 60 * 1000);
 
     logger.info(`[EXPIRY] Scheduled expiry check every ${checkIntervalMinutes} minutes`);

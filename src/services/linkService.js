@@ -51,6 +51,7 @@ class LinkService {
       clicks:      doc.clicks,
       expiresAt:   toGMT1(doc.expiresAt),
       isExpired:   doc.expiresAt ? new Date() > new Date(doc.expiresAt) : false,
+      notifyBefore: doc.notifyBefore ?? null,
       createdAt:   toGMT1(doc.createdAt),
       updatedAt:   toGMT1(doc.updatedAt),
     };
@@ -90,9 +91,12 @@ class LinkService {
 
   // ── Use Cases ──────────────────────────────────────────────────────────────
 
-  async shortenUrl({ originalUrl, customCode, expiresAt, baseUrl, userId }) {
+  async shortenUrl({ originalUrl, customCode, expiresAt, notifyBefore, baseUrl, userId }) {
     const trimmed = this._validateUrl(originalUrl);
     const expiryDate = this._validateExpiryDate(expiresAt);
+    const notifyBeforeMinutes = (notifyBefore !== undefined && notifyBefore !== null && expiryDate)
+      ? Number(notifyBefore)
+      : null;
 
     if (!customCode && !expiresAt) {
       const existing = await repo.findByOriginalUrl(trimmed, userId);
@@ -103,17 +107,20 @@ class LinkService {
     }
 
     const code = await this._resolveCode(customCode);
-    const link = await repo.create({ code, originalUrl: trimmed, expiresAt: expiryDate, createdBy: userId });
+    const link = await repo.create({
+      code,
+      originalUrl: trimmed,
+      expiresAt: expiryDate,
+      notifyBefore: notifyBeforeMinutes,
+      createdBy: userId,
+    });
     logger.info(`Created link: ${code} → ${trimmed}`);
 
-    // If the link expires within 1 hour, send notification immediately
+    // Email 1: Always send creation confirmation for links with expiry
     if (expiryDate) {
-      const msUntilExpiry = expiryDate.getTime() - Date.now();
-      if (msUntilExpiry > 0 && msUntilExpiry <= 60 * 60 * 1000) {
-        this._sendImmediateExpiryNotification(link, userId).catch(err =>
-          logger.error(`[EXPIRY] Immediate notification failed for ${code}: ${err.message}`)
-        );
-      }
+      this._sendCreationNotification(link, userId).catch(err =>
+        logger.error(`[EMAIL] Creation notification failed for ${code}: ${err.message}`)
+      );
     }
 
     return this._formatLink(link, baseUrl);
@@ -170,21 +177,20 @@ class LinkService {
   }
 
   /**
-   * Send an immediate expiry notification for a newly created link.
+   * Send creation confirmation email for a newly created link.
    * Runs in the background (fire-and-forget via .catch in caller).
    */
-  async _sendImmediateExpiryNotification(link, userId) {
+  async _sendCreationNotification(link, userId) {
     const user = await User.findById(userId);
     if (!user) {
-      logger.warn(`[EXPIRY] User ${userId} not found, skipping immediate notification`);
+      logger.warn(`[EMAIL] User ${userId} not found, skipping creation notification`);
       return;
     }
-    const sent = await emailService.sendLinkExpiryNotification(user, link);
+    const sent = await emailService.sendLinkCreatedNotification(user, link);
     if (sent) {
-      // Mark so the cron job doesn't send a duplicate
       const Link = (await import('../models/Link.js')).default;
-      await Link.findByIdAndUpdate(link._id, { notificationSent: true, notificationSentAt: new Date() });
-      logger.info(`[EXPIRY] Immediate notification sent for ${link.code} to ${user.email}`);
+      await Link.findByIdAndUpdate(link._id, { creationNotificationSent: true });
+      logger.info(`[EMAIL] Creation notification sent for ${link.code} to ${user.email}`);
     }
   }
 }

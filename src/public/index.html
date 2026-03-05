@@ -57,6 +57,19 @@
           <div class="collapse" id="g-exp">
             <label class="lbl" for="expiresAt">Expires at <small style="color:#999">(GMT+1)</small></label>
             <input type="datetime-local" id="expiresAt" />
+            <label class="lbl" for="notifyBefore" style="margin-top:10px">Notify me before expiry</label>
+            <small style="display:block;color:#999;margin-bottom:6px">You'll get emails on creation, before expiry, and after expiry.</small>
+            <select id="notifyBefore" style="width:100%;padding:8px 10px;font-family:'DM Mono',monospace;font-size:13px;border:1px solid var(--border2);border-radius:4px;background:var(--card);color:var(--fg);">
+              <option value="15">15 minutes before</option>
+              <option value="30">30 minutes before</option>
+              <option value="60" selected>1 hour before</option>
+              <option value="180">3 hours before</option>
+              <option value="360">6 hours before</option>
+              <option value="720">12 hours before</option>
+              <option value="1440">1 day before</option>
+              <option value="4320">3 days before</option>
+              <option value="10080">1 week before</option>
+            </select>
           </div>
         </div>
       </div>

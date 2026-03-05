@@ -95,7 +95,10 @@ function tog(id, gid) {
   document.getElementById(gid).classList.toggle('open', togState[id]);
   if (!togState[id]) {
     if (gid==='g-custom') document.getElementById('customCode').value='';
-    if (gid==='g-exp')    document.getElementById('expiresAt').value='';
+    if (gid==='g-exp') {
+      document.getElementById('expiresAt').value='';
+      document.getElementById('notifyBefore').value='60';
+    }
   }
 }
 
@@ -106,6 +109,8 @@ async function shorten() {
   // Append +01:00 offset so the server interprets input as GMT+1
   const rawExp = togState['t-exp'] ? document.getElementById('expiresAt').value : '';
   const expiresAt = rawExp ? rawExp + ':00+01:00' : undefined;
+  const notifyBeforeVal = togState['t-exp'] ? document.getElementById('notifyBefore').value : '';
+  const notifyBefore = (rawExp && notifyBeforeVal !== '') ? Number(notifyBeforeVal) : undefined;
   const btn = document.getElementById('snipBtn');
   const res = document.getElementById('result');
 
@@ -115,12 +120,12 @@ async function shorten() {
   res.classList.remove('show');
 
   try {
-    const r = await apiCall('/api/links', 'POST', {originalUrl, customCode, expiresAt});
+    const r = await apiCall('/api/links', 'POST', {originalUrl, customCode, expiresAt, notifyBefore});
     const j = await r.json();
     if (!r.ok) { flash('err','✕ Error',j.error||'Something went wrong.','',''); return; }
     const d = j.data;
     shortUrl = d.shortUrl;
-    const expLine = d.expiresAt ? `<br>Expires: <span>${fmtGMT1(d.expiresAt)}</span>` : '';
+    const expLine = d.expiresAt ? `<br>Expires: <span>${fmtGMT1(d.expiresAt)}</span>${fmtNotify(d.notifyBefore)}` : '';
     flash('ok',
       d.existing ? '↩ Already shortened' : '✓ Shortened',
       d.shortUrl,
@@ -317,6 +322,14 @@ STATUS CODES
 }
 
 // ── Utils ─────────────────────────────────────────────────────────────
+function fmtNotify(minutes) {
+  if (minutes === null || minutes === undefined) return '';
+  if (minutes < 60) return `<br><span style="color:var(--muted);font-size:11px">🔔 Reminder ${minutes}m before expiry</span>`;
+  if (minutes < 1440) { const h = Math.round(minutes / 60); return `<br><span style="color:var(--muted);font-size:11px">🔔 Reminder ${h}h before expiry</span>`; }
+  const d = Math.round(minutes / 1440);
+  return `<br><span style="color:var(--muted);font-size:11px">🔔 Reminder ${d}d before expiry</span>`;
+}
+
 function x(s){
   return String(s)
   .replaceAll('&','&amp;')

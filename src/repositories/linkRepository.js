@@ -32,8 +32,8 @@ class LinkRepository {
   /**
    * Persist a new link document.
    */
-  async create({ code, originalUrl, expiresAt, createdBy }) {
-    const link = new Link({ code, originalUrl, expiresAt, createdBy });
+  async create({ code, originalUrl, expiresAt, notifyBefore, createdBy }) {
+    const link = new Link({ code, originalUrl, expiresAt, notifyBefore, createdBy });
     return link.save();
   }
 

@@ -14,12 +14,12 @@ class LinkController {
    * Shorten a URL.
    */
   shorten = catchAsync(async (req, res) => {
-    const { originalUrl, customCode, expiresAt } = req.body;
+    const { originalUrl, customCode, expiresAt, notifyBefore } = req.body;
     const protocol = req.get('x-forwarded-proto') || req.protocol || 'http';
     const host = req.get('x-forwarded-host') || req.get('host') || 'localhost:3000';
     const baseUrl = `${protocol}://${host}`;
     const userId = req.user._id; // From auth middleware
-    const result = await linkService.shortenUrl({ originalUrl, customCode, expiresAt, baseUrl, userId });
+    const result = await linkService.shortenUrl({ originalUrl, customCode, expiresAt, notifyBefore, baseUrl, userId });
     const status = result.existing ? 200 : 201;
     res.status(status).json({ success: true, data: result });
   });

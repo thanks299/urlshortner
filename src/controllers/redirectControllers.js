@@ -31,9 +31,7 @@ class RedirectController {
       return res.redirect(302, originalUrl);
     } catch (err) {
       const status  = err.statusCode || 500;
-      const title   = status === 404 ? 'Link Not Found'
-                    : status === 410 ? 'Link Expired'
-                    : 'Something Went Wrong';
+      const title   = this.getTitleByStatus(status);
       const message = err.message || 'An unexpected error occurred.';
       return res.status(status).send(errorHtml(title, message, status, code));
     }
@@ -42,6 +40,12 @@ class RedirectController {
   home = (_req, res) => {
     res.sendFile(publicIndexPath);
   };
+
+  getTitleByStatus(status) {
+    if (status === 404) return 'Link Not Found';
+    if (status === 410) return 'Link Expired';
+    return 'Something Went Wrong';
+  }
 }
 
 function esc(s) {

@@ -10,80 +10,116 @@ import logger from '../config/logger.js';
 
 class LinkExpiryService {
   /**
-   * Check for links expiring within the notification window
-   * and send notifications to their owners
-   * @param {number} hoursBeforeExpiry - Hours before expiry to send notification (default: 24)
-   * @returns {Promise<object>} - Result with counts
+   * Run all notification checks:
+   *   Email 2 — pre-expiry (based on each link's notifyBefore setting)
+   *   Email 3 — post-expiry (2 minutes after the link expires)
+   * @returns {Promise<object>}
    */
-  async checkAndNotifyExpiringLinks(hoursBeforeExpiry = 1) {
+  async checkAndNotifyExpiringLinks() {
+    const preResult = await this._sendPreExpiryNotifications();
+    const postResult = await this._sendPostExpiryNotifications();
+
+    return {
+      checkedAt: new Date().toISOString(),
+      preExpiry: preResult,
+      postExpiry: postResult,
+    };
+  }
+
+  /**
+   * Email 2 — Send pre-expiry notifications based on each link's notifyBefore.
+   */
+  async _sendPreExpiryNotifications() {
+    let successCount = 0;
+    let failureCount = 0;
+
     try {
       const now = new Date();
-      const expiryWindow = new Date(now.getTime() + hoursBeforeExpiry * 60 * 60 * 1000);
 
-      // Find links that:
-      // 1. Are still active
-      // 2. Have an expiry date
-      // 3. Expire within the notification window
-      // 4. Haven't had a notification sent yet
-      const expiringLinks = await Link.find({
+      const candidates = await Link.find({
         isActive: true,
         expiresAt: { $exists: true, $ne: null },
-        $expr: {
-          $and: [
-            { $gte: ['$expiresAt', now] }, // Not already expired
-            { $lte: ['$expiresAt', expiryWindow] }, // Within notification window
-          ],
-        },
-        notificationSent: { $not: { $eq: true } }, // Notification not yet sent
+        notifyBefore: { $exists: true, $ne: null, $gt: 0 },
+        notificationSent: { $ne: true },
       });
 
-      logger.info(`[EXPIRY] Found ${expiringLinks.length} links expiring within ${hoursBeforeExpiry} hours`);
+      const linksToNotify = candidates.filter(link => {
+        const expiresAt = new Date(link.expiresAt);
+        if (expiresAt <= now) return false;
+        const notifyAt = new Date(expiresAt.getTime() - link.notifyBefore * 60 * 1000);
+        return now >= notifyAt;
+      });
 
-      let successCount = 0;
-      let failureCount = 0;
+      logger.info(`[EXPIRY] Pre-expiry: ${linksToNotify.length} links ready (${candidates.length} candidates)`);
 
-      for (const link of expiringLinks) {
+      for (const link of linksToNotify) {
         try {
-          // Get the user who created this link
           const user = await User.findById(link.createdBy);
-          if (!user) {
-            logger.warn(`[EXPIRY] User not found for link ${link.code}`);
-            failureCount++;
-            continue;
-          }
+          if (!user) { failureCount++; continue; }
 
-          // Send notification email
           const sent = await emailService.sendLinkExpiryNotification(user, link);
-          
           if (sent) {
-            // Mark notification as sent
-            await Link.findByIdAndUpdate(link._id, { notificationSent: true });
+            await Link.findByIdAndUpdate(link._id, {
+              notificationSent: true,
+              notificationSentAt: new Date(),
+            });
             successCount++;
           } else {
             failureCount++;
           }
         } catch (err) {
-          logger.error(`[EXPIRY] Error processing link ${link.code}:`, err.message);
+          logger.error(`[EXPIRY] Pre-expiry error for ${link.code}:`, err.message);
           failureCount++;
         }
       }
-
-      const result = {
-        checkedAt: now.toISOString(),
-        linksFound: expiringLinks.length,
-        notificationsSent: successCount,
-        notificationsFailed: failureCount,
-      };
-
-      logger.info(`[EXPIRY] Notification run complete:`, result);
-      return result;
     } catch (err) {
-      logger.error('[EXPIRY] Error in checkAndNotifyExpiringLinks:', err.message);
-      return {
-        checkedAt: new Date().toISOString(),
-        error: err.message,
-      };
+      logger.error('[EXPIRY] Pre-expiry check failed:', err.message);
     }
+
+    return { sent: successCount, failed: failureCount };
+  }
+
+  /**
+   * Email 3 — Send post-expiry notifications 2 minutes after a link expires.
+   */
+  async _sendPostExpiryNotifications() {
+    let successCount = 0;
+    let failureCount = 0;
+
+    try {
+      const now = new Date();
+      const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
+
+      // Links that have expired (expiresAt <= 2 minutes ago) and haven't been notified yet
+      const expiredLinks = await Link.find({
+        expiresAt: { $exists: true, $ne: null, $lte: twoMinutesAgo },
+        expiryNotificationSent: { $ne: true },
+      });
+
+      logger.info(`[EXPIRY] Post-expiry: ${expiredLinks.length} expired links to notify`);
+
+      for (const link of expiredLinks) {
+        try {
+          const user = await User.findById(link.createdBy);
+          if (!user) { failureCount++; continue; }
+
+          const sent = await emailService.sendLinkExpiredNotification(user, link);
+          if (sent) {
+            await Link.findByIdAndUpdate(link._id, { expiryNotificationSent: true });
+            successCount++;
+          } else {
+            failureCount++;
+          }
+        } catch (err) {
+          logger.error(`[EXPIRY] Post-expiry error for ${link.code}:`, err.message);
+          failureCount++;
+        }
+      }
+    } catch (err) {
+      logger.error('[EXPIRY] Post-expiry check failed:', err.message);
+    }
+
+    return { sent: successCount, failed: failureCount };
   }
 
   /**
