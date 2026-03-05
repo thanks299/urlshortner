@@ -31,13 +31,6 @@ async function bootstrap() {
   // Connect to MongoDB
   await connect();
 
-  // Initialize email service — wait for it so transporter is ready before accepting requests
-  try {
-    await initMailer();
-  } catch (err) {
-    logger.warn('Email service initialization failed (non-critical):', err.message);
-  }
-
   const app = express();
 
   // Trust proxy headers for deployed apps
@@ -83,6 +76,12 @@ async function bootstrap() {
     app.listen(PORT, () => {
       logger.info(`🔗  URL Shortener running → http://localhost:${PORT}`);
       logger.info(`📡  API       → http://localhost:${PORT}/api`);
+    });
+
+    // Initialize email service AFTER server is listening (non-blocking)
+    // This prevents slow SMTP verification from delaying port binding on Render
+    initMailer().catch((err) => {
+      logger.warn('Email service initialization failed (non-critical):', err.message);
     });
 
     // Set up periodic task to check for expiring links (every 5 minutes)

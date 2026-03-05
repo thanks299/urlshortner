@@ -55,6 +55,8 @@ function createTransporter() {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASSWORD,
     } : undefined,
+    connectionTimeout: 10000, // 10s timeout instead of default 2min
+    greetingTimeout: 10000,
   });
 }
 
