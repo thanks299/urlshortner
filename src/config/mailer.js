@@ -16,11 +16,13 @@ function createTransporter() {
   const emailProvider = process.env.EMAIL_PROVIDER || 'smtp';
   
   if (emailProvider === 'gmail') {
+    console.log('Using Gmail Email:', process.env.GMAIL_EMAIL);
+    console.log('App Password Loaded:', !!process.env.GMAIL_APP_PASSWORD);
     return nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: process.env.GMAIL_EMAIL,
-        pass: process.env.GMAIL_APP_PASSWORD, // Use app-specific password
+        pass: process.env.GMAIL_APP_PASSWORD,
       },
     });
   }
@@ -35,34 +37,20 @@ function createTransporter() {
     });
   }
   
-  if (emailProvider === 'sendgrid') {
-    return nodemailer.createTransport({
-      host: 'smtp.sendgrid.net',
-      port: 587,
-      auth: {
-        user: 'apikey',
-        pass: process.env.SENDGRID_API_KEY,
-      },
-    });
-  }
-  
   // Default: Generic SMTP
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'localhost',
     port: Number.parseInt(process.env.SMTP_PORT || '587', 10),
-    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for 587
+    secure: process.env.SMTP_SECURE === 'true',
     auth: process.env.SMTP_USER ? {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASSWORD,
     } : undefined,
-    connectionTimeout: 10000, // 10s timeout instead of default 2min
+    connectionTimeout: 10000,
     greetingTimeout: 10000,
   });
 }
 
-/**
- * Initialize mailer (call on app startup)
- */
 export async function initMailer() {
   if (!process.env.EMAIL_PROVIDER) {
     logger.warn('EMAIL_PROVIDER not set. Email notifications disabled.');
@@ -72,12 +60,11 @@ export async function initMailer() {
   try {
     transporter = createTransporter();
     
-    // Verify connection (non-fatal — transporter can still send if verify fails)
     try {
       await transporter.verify();
       logger.info('✓ Email transporter configured and verified');
     } catch (verifyErr) {
-      logger.warn(`⚠ Email transporter verify failed (will still attempt sends): ${verifyErr.message}`);
+      logger.warn(`⚠ Email transporter verify failed: ${verifyErr.message}`);
     }
     return true;
   } catch (err) {
@@ -87,9 +74,6 @@ export async function initMailer() {
   }
 }
 
-/**
- * Get transporter instance
- */
 export function getTransporter() {
   if (!transporter) {
     logger.error('Email transporter not initialized. Call initMailer() first.');
@@ -98,9 +82,6 @@ export function getTransporter() {
   return transporter;
 }
 
-/**
- * Check if email is configured
- */
 export function isMailerConfigured() {
   return transporter !== null;
 }

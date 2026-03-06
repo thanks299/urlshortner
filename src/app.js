@@ -79,7 +79,7 @@ async function bootstrap() {
     });
 
     // Initialize email service AFTER server is listening (non-blocking)
-    // This prevents slow SMTP verification from delaying port binding on Render
+    // This prevents slow nodemailer verification from delaying port binding on Render
     initMailer().catch((err) => {
       logger.warn('Email service initialization failed (non-critical):', err.message);
     });

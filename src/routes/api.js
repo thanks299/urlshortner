@@ -13,10 +13,10 @@ const router = Router();
 router.get('/health', ctrl.health);
 
 // Links
-router.post('/links',                  validateShorten, ctrl.shorten);
-router.get('/links',                                    ctrl.list);
-router.get('/links/:code/analytics',                    ctrl.analytics);
-router.delete('/links/:code',                           ctrl.remove);
+router.post('/links', validateShorten, ctrl.shorten);
+router.get('/links', ctrl.list);
+router.get('/links/:code/analytics', ctrl.analytics);
+router.delete('/links/:code', ctrl.remove);
 
 // API info
 router.get('/', (_req, res) => {
