@@ -97,7 +97,7 @@ function tog(id, gid) {
     if (gid==='g-custom') document.getElementById('customCode').value='';
     if (gid==='g-exp') {
       document.getElementById('expiresAt').value='';
-      document.getElementById('notifyBefore').value='60';
+      document.getElementById('notifyBefore').value='20';
     }
   }
 }
