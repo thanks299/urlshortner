@@ -42,6 +42,39 @@ class EmailService {
 
   // ─── notifications ────────────────────────────────────────────────
 
+    /**
+   * Send welcome email to new user
+   * @param {object} user - User document
+   * @returns {Promise<boolean>}
+   */
+  async sendWelcomeEmail(user) {
+    if (!isMailerConfigured()) return false;
+    const transporter = getTransporter();
+    if (!transporter) return false;
+
+    try {
+      const appUrl = process.env.BASE_URL || 'http://localhost:3000';
+
+      const htmlContent = renderTemplate('email', 'welcome', {
+        userEmail: user.email,
+        appUrl,
+      });
+
+      const info = await transporter.sendMail({
+        from: this._from(),
+        to: user.email,
+        subject: 'Welcome to URL Shortener',
+        html: htmlContent,
+      });
+
+      logger.info(`[EMAIL] Sent welcome email to ${user.email} (Message ID: ${info.messageId})`);
+      return true;
+    } catch (err) {
+      logger.error(`[EMAIL] Failed to send welcome email:`, err.message);
+      return false;
+    }
+  }
+
   /**
    * Send link expiry notification
    * @param {object} user - User document
@@ -194,39 +227,6 @@ class EmailService {
       return true;
     } catch (err) {
       logger.error(`[EMAIL] Failed to send expired notification to ${user.email}:`, err.message);
-      return false;
-    }
-  }
-
-  /**
-   * Send welcome email to new user
-   * @param {object} user - User document
-   * @returns {Promise<boolean>}
-   */
-  async sendWelcomeEmail(user) {
-    if (!isMailerConfigured()) return false;
-    const transporter = getTransporter();
-    if (!transporter) return false;
-
-    try {
-      const appUrl = process.env.BASE_URL || 'http://localhost:3000';
-
-      const htmlContent = renderTemplate('email', 'welcome', {
-        userEmail: user.email,
-        appUrl,
-      });
-
-      const info = await transporter.sendMail({
-        from: this._from(),
-        to: user.email,
-        subject: 'Welcome to URL Shortener',
-        html: htmlContent,
-      });
-
-      logger.info(`[EMAIL] Sent welcome email to ${user.email} (Message ID: ${info.messageId})`);
-      return true;
-    } catch (err) {
-      logger.error(`[EMAIL] Failed to send welcome email:`, err.message);
       return false;
     }
   }

@@ -7,6 +7,8 @@ import User from '../models/User.js';
 import AppError from '../utils/AppError.js';
 import catchAsync from '../utils/catchAsync.js';
 import { signToken } from '../utils/jwt.js';
+import emailService from '../services/emailService.js';
+import logger from '../config/logger.js';
 
 export const register = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
@@ -28,6 +30,11 @@ export const register = catchAsync(async (req, res, next) => {
 
   // Create new user
   const user = await User.create({ email: email.toLowerCase(), password });
+
+  // Send welcome email (fire-and-forget)
+  emailService.sendWelcomeEmail(user).catch(err =>
+    logger.error(`[EMAIL] Welcome email failed for ${user.email}: ${err.message}`)
+  );
 
   // Generate JWT token
   const token = signToken(user._id);

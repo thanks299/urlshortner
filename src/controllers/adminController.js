@@ -14,13 +14,7 @@ class AdminController {
    * (Protected - only admins/system can call)
    */
   checkExpiringLinks = catchAsync(async (req, res) => {
-    const { hoursBeforeExpiry = 24 } = req.body;
-
-    if (!Number.isInteger(hoursBeforeExpiry) || hoursBeforeExpiry < 1) {
-      return new AppError('hoursBeforeExpiry must be a positive integer', 400);
-    }
-
-    const result = await linkExpiryService.checkAndNotifyExpiringLinks(hoursBeforeExpiry);
+    const result = await linkExpiryService.checkAndNotifyExpiringLinks();
 
     res.status(200).json({
       success: true,
